@@ -1,0 +1,70 @@
+Pipeline Script : -
+pipeline {
+    agent none
+
+    environment {
+        MAVEN_HOME = '/mnt/Build-tools/apache-maven-3.9.11'
+        WAR_FILE = 'target/LoginWebApp.war'
+        REMOTE_PATH = '/mnt/servers/apache-tomcat-10.1.43/webapps'
+        PEM_FILE = '/key/key.pem'
+        SLAVE1_IP = '3.109.201.172'
+        SLAVE2_IP = '3.111.33.254'
+    }
+
+    tools {
+        maven 'maven' 
+    }
+
+    stages {
+
+        stage('Checkout Source') {
+            agent { label 'slave1' }
+            steps {
+                dir('/mnt/wsp/') {
+                    deleteDir() 
+                    git credentialsId: 'git-id', url: 'https://github.com/Sanjana811-N/project.git'
+                }
+            }
+        }
+
+        stage('Build WAR') {
+            agent { label 'slave1' }
+            steps {
+                dir('/mnt/wsp/') {
+                    sh " mvn clean install "
+					// stash name: 'war-build', includes: 'target/LoginWebApp.war'
+                }
+				
+            }
+        }
+		
+		 stage('Deploy in Slave1') {
+            agent { label 'slave1' }
+            steps {
+                dir('/mnt/servers/apache-tomcat-10.1.43/webapps') {
+                     
+					 sh " rm -rf LoginWebApp* "
+					 sh "cp -r /mnt/wsp/target/LoginWebApp.war . "
+                }
+				
+				dir('/mnt/servers/apache-tomcat-10.1.43/bin') {
+                    sh "sudo ./shutdown.sh || true"
+                    sh "sudo ./startup.sh"
+                }
+            }
+        }
+		
+		 
+
+       
+    }
+
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed!'
+        }
+    }
+}
