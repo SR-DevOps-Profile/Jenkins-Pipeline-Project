@@ -1,0 +1,51 @@
+pipeline {
+    agent none
+
+    triggers {
+        githubPush()
+    }
+
+    stages {
+
+        stage('Checkout Source') {
+            agent { label 'slave1' }
+            steps {
+                dir('/mnt/wsp/') {
+                    deleteDir() 
+                    git credentialsId: 'git-id', url: 'https://github.com/Sanjana811-N/R1-Masterbranch.git'
+                }
+            }
+        }
+
+        stage('Downloading httpd') {
+            agent { label 'slave1' }
+            steps {
+                sh 'sudo yum remove httpd -y'
+                sh 'sudo yum install httpd -y'
+                sh 'sudo systemctl start httpd'
+                sh 'sudo systemctl enable httpd'
+                
+            }
+        }
+
+        
+		stage('Deploy in Slave1') {
+    agent { label 'slave1' }
+    steps {
+        sh '''
+            sudo rm -rf /var/www/html/index*
+            sudo cp /mnt/wsp/index.html /var/www/html/
+        '''
+    }
+}
+    }
+
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed!'
+        }
+    }
+}
