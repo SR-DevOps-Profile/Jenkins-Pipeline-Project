@@ -1,0 +1,78 @@
+Pipeline Script : -
+pipeline {
+    agent none
+
+   tools {
+        maven 'maven' 
+    }
+
+    stages {
+
+        stage('Checkout Source') {
+            agent { label 'built-in' }
+            steps {
+                dir('/mnt/wsp/') {
+                    deleteDir() 
+                    git credentialsId: 'git-id', url: 'https://github.com/Sanjana811-N/project.git'
+                }
+            }
+        }
+
+        stage('Build WAR') {
+            agent { label 'built-in' }
+            steps {
+                dir('/mnt/wsp/') {
+                    sh " mvn clean install "
+					// stash name: 'war-build', includes: 'target/LoginWebApp.war'
+                }
+				dir('/mnt/wsp/target') {
+                    
+					stash name: 'war-build', includes: 'LoginWebApp.war'
+                }
+            }
+        }
+		
+		 stage('Deploy in Slave1') {
+            agent { label 'slave1' }
+            steps {
+                dir('/mnt/servers/apache-tomcat-10.1.43/webapps') {
+                     
+					 sh " rm -rf LoginWebApp* "
+					 unstash 'war-build'
+                }
+				
+				dir('/mnt/servers/apache-tomcat-10.1.43/bin') {
+                    sh "sudo ./shutdown.sh || true"
+                    sh "sudo ./startup.sh"
+                }
+            }
+        }
+		
+		 stage('Deploy in Slave2') {
+            agent { label 'slave2' }
+            steps {
+                dir('/mnt/servers/apache-tomcat-10.1.43/webapps') {
+                     
+					 sh " rm -rf LoginWebApp* "
+					 unstash 'war-build'
+                }
+				
+				dir('/mnt/servers/apache-tomcat-10.1.43/bin') {
+                    sh "sudo ./shutdown.sh || true"
+                    sh "sudo ./startup.sh"
+                }
+            }
+        }
+
+       
+    }
+
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed!'
+        }
+    }
+}
