@@ -12,7 +12,7 @@ pipeline {
             steps {
                 dir('/mnt/wsp/') {
                     deleteDir() 
-                    git credentialsId: 'git-id', url: 'https://github.com/Sanjana811-N/R1-Masterbranch.git'
+                    git credentialsId: 'git-id', url: 'https://github.com/SR-DevOps-Profile/R1-Masterbranch.git'
                 }
             }
         }
